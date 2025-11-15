@@ -9,6 +9,7 @@ file(GLOB_RECURSE PROJECT_SOURCES
         )
 
 add_subdirectory(extern/SDL EXCLUDE_FROM_ALL)
+add_subdirectory(extern/Eigen EXCLUDE_FROM_ALL)
 
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
 
@@ -16,8 +17,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-
 target_link_libraries(${PROJECT_NAME}
         PRIVATE SDL3::SDL3
+        PRIVATE Eigen3::Eigen
 )
 

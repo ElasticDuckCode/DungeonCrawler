@@ -1,4 +1,6 @@
 #include "graphics.hpp"
+#include "Eigen/Dense"
+#include <iostream>
 
 Graphics::Graphics() : Graphics("My Creative Title") {};
 
@@ -17,10 +19,6 @@ Graphics& Graphics::clear() {
 }
 
 Graphics& Graphics::draw(int x, int y) {
-        // Hardcode wall
-        int wallX[4];
-        int wallY[4];
-        int wallZ[4];
 
         SDL_SetRenderDrawColor(this->renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
         SDL_RenderLine(this->renderer, 10, 10, 100, 100);
