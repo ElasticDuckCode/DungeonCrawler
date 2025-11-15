@@ -18,7 +18,7 @@ Graphics& Graphics::clear() {
         return *this;
 }
 
-Graphics& Graphics::draw(int x, int y) {
+Graphics& Graphics::drawWalls() {
 
         SDL_SetRenderDrawColor(this->renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
         SDL_RenderLine(this->renderer, 10, 10, 100, 100);
