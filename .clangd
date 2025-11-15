@@ -1,2 +1,6 @@
 CompileFlags:
-  CompilationDatabase: "build"
+        CompilationDatabase: "build"
+Diagnostics:
+        UnusedIncludes: None
+Completion:
+        HeaderInsertion: Never
