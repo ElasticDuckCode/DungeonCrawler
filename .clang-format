@@ -7,3 +7,4 @@ AccessModifierOffset: -8
 ColumnLimit: 120
 DerivePointerAlignment: false
 PointerAlignment: Left
+AllowShortFunctionsOnASingleLine: false
