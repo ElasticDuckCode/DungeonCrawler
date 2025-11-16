@@ -19,6 +19,13 @@ file(GLOB_RECURSE PROJECT_SOURCES
 
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
 
+set_target_properties(${PROJECT_NAME}
+    PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+)
+
 target_include_directories(${PROJECT_NAME}
         PRIVATE "${CMAKE_SOURCE_DIR}/include"
 )
@@ -26,4 +33,5 @@ target_link_libraries(${PROJECT_NAME}
         PRIVATE SDL3::SDL3
         PRIVATE Eigen3::Eigen
 )
+
 
