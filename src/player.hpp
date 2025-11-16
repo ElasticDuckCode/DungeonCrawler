@@ -9,8 +9,6 @@ public:
         Player();
         ~Player();
 
-        std::string log();
-
 private:
         Eigen::Vector3d direction;
         Eigen::Vector3d location;

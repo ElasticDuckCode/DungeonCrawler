@@ -1,14 +1,12 @@
 #include "graphics.hpp"
-#include "Eigen/Dense"
-#include <iostream>
 
-Graphics::Graphics() : Graphics("My Creative Title") {};
-
-Graphics::Graphics(const char* title) {
+Graphics::Graphics(const char* title, int width, int height) {
         if (!SDL_WasInit(SDL_INIT_VIDEO)) {
                 SDL_Init(SDL_INIT_VIDEO);
         }
-        this->window = SDL_CreateWindow(title, 640, 480, 0);
+        this->width = width;
+        this->height = height;
+        this->window = SDL_CreateWindow(title, this->width, this->height, 0);
         this->renderer = SDL_CreateRenderer(this->window, NULL);
 }
 
@@ -18,10 +16,28 @@ Graphics& Graphics::clear() {
         return *this;
 }
 
-Graphics& Graphics::drawWalls() {
+Graphics& Graphics::drawWorld() { return *this; }
 
-        SDL_SetRenderDrawColor(this->renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
-        SDL_RenderLine(this->renderer, 10, 10, 100, 100);
+Graphics& Graphics::drawMiniMap() {
+        float mapScale = 0.3;
+        float mapOffset = 0.01;
+
+        int minDim = this->height;
+        if (this->height > this->width) {
+                minDim = this->width;
+        }
+
+        int mapX = int(mapOffset * minDim);
+        int mapY = int(mapOffset * minDim);
+        int mapW = int(mapScale * minDim);
+        int mapH = int(mapScale * minDim);
+
+        SDL_SetRenderDrawColor(this->renderer, 245, 245, 245, SDL_ALPHA_OPAQUE);
+        SDL_RenderLine(this->renderer, mapX, mapY, mapX + mapW, mapY);
+        SDL_RenderLine(this->renderer, mapX + mapW, mapY, mapX + mapW, mapY + mapH);
+        SDL_RenderLine(this->renderer, mapX + mapW, mapY + mapH, mapX, mapY + mapH);
+        SDL_RenderLine(this->renderer, mapX, mapY + mapH, mapX, mapY);
+
         return *this;
 }
 

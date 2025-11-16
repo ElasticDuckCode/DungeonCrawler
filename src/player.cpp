@@ -14,11 +14,3 @@ Player::Player() {
 }
 
 Player::~Player() {}
-
-std::string Player::log() {
-        std::ostringstream oss;
-        oss << "Direction: " << this->direction << std::endl;
-        oss << std::endl;
-        oss << "Location:  " << this->location << std::endl;
-        return oss.str();
-}
