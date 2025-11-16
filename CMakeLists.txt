@@ -9,12 +9,19 @@ add_subdirectory(extern/SDL EXCLUDE_FROM_ALL)
 add_subdirectory(extern/Eigen EXCLUDE_FROM_ALL)
 
 project(crawler VERSION 0.0.1)
+
 file(GLOB_RECURSE PROJECT_SOURCES
         "${CMAKE_SOURCE_DIR}/src/*.c"
         "${CMAKE_SOURCE_DIR}/src/*.cpp"
+        "${CMAKE_SOURCE_DIR}/include/*.h"
+        "${CMAKE_SOURCE_DIR}/include/*.hpp"
         )
+
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
 
+target_include_directories(${PROJECT_NAME}
+        PRIVATE "${CMAKE_SOURCE_DIR}/include"
+)
 target_link_libraries(${PROJECT_NAME}
         PRIVATE SDL3::SDL3
         PRIVATE Eigen3::Eigen
