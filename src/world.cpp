@@ -85,8 +85,7 @@ World& World::drawPlayerPOV(SDL_Renderer* renderer, Player player) {
         switch (player.direction) {
         case Direction::NORTH:
                 angle = 0;
-                // wallIdx = {2, 0, 1, 3};
-                wallIdx = {6, 4, 5, 7};
+                wallIdx = {2, 0, 1, 3};
                 break;
         case Direction::SOUTH:
                 angle = std::numbers::pi;
@@ -127,7 +126,7 @@ World& World::drawPlayerPOV(SDL_Renderer* renderer, Player player) {
         playerPosition[3] = 0;
 
         // Screen-space projection matrix
-        float fov = 100; // horizontal
+        float fov = 90; // horizontal
         float f = 0;
         fov = std::numbers::pi * fov / 180;
         f = 1 / std::tan(fov / 2); // assuming that screen x-axis plus/minus 1.
@@ -200,7 +199,46 @@ World& World::drawPlayerPOV(SDL_Renderer* renderer, Player player) {
                         std::cout << gridScreen << std::endl << std::endl;
 
                         // Draw
-                        SDL_SetRenderDrawColor(renderer, 245, 245, 245, 255);
+
+                        std::vector<SDL_Vertex> verts{
+                            {
+                                SDL_FPoint{gridScreen[0, 0], gridScreen[1, 0]},
+                                SDL_FColor{0.5f, 0.5f, 0.5f, 1.0f},
+                                SDL_FPoint{0, 0},
+                            },
+                            {
+                                SDL_FPoint{gridScreen[0, 1], gridScreen[1, 1]},
+                                SDL_FColor{0.5f, 0.5f, 0.5f, 1.0f},
+                                SDL_FPoint{0, 0},
+                            },
+                            {
+                                SDL_FPoint{gridScreen[0, 2], gridScreen[1, 2]},
+                                SDL_FColor{0.5f, 0.5f, 0.5f, 1.0f},
+                                SDL_FPoint{0, 0},
+                            },
+                        };
+                        SDL_RenderGeometry(renderer, nullptr, verts.data(), verts.size(), nullptr, 0);
+
+                        verts = {
+                            {
+                                SDL_FPoint{gridScreen[0, 2], gridScreen[1, 2]},
+                                SDL_FColor{0.5f, 0.5f, 0.5f, 1.0f},
+                                SDL_FPoint{0, 0},
+                            },
+                            {
+                                SDL_FPoint{gridScreen[0, 3], gridScreen[1, 3]},
+                                SDL_FColor{0.5f, 0.5f, 0.5f, 1.0f},
+                                SDL_FPoint{0, 0},
+                            },
+                            {
+                                SDL_FPoint{gridScreen[0, 0], gridScreen[1, 0]},
+                                SDL_FColor{0.5f, 0.5f, 0.5f, 1.0f},
+                                SDL_FPoint{0, 0},
+                            },
+                        };
+                        SDL_RenderGeometry(renderer, nullptr, verts.data(), verts.size(), nullptr, 0);
+
+                        SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
                         SDL_RenderLine(renderer, gridScreen[0, 0], gridScreen[1, 0], gridScreen[0, 1],
                                        gridScreen[1, 1]);
                         SDL_RenderLine(renderer, gridScreen[0, 1], gridScreen[1, 1], gridScreen[0, 2],
