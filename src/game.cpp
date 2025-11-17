@@ -1,10 +1,15 @@
 #include "game.hpp"
 
+#include <iostream>
 #include <print>
+#include <string>
 
 Game::Game() {
         this->world = World();
-        this->players[0] = Player();
+        this->player = Player();
+}
+
+Game::~Game() {
 }
 
 Game& Game::setResourcePath(const char* execPath) {
@@ -27,7 +32,16 @@ Game& Game::loadWorld(const char* rfname) {
 }
 
 Game& Game::loadPlayer(int number) {
-        this->players[number].location = this->world.findPlayerSpawn();
+        // TODO: player number does nothing right now.
+        this->player.location = this->world.findPlayerSpawn();
+        return *this;
+}
+
+Game& Game::RenderDrawWorld(SDL_Renderer* renderer) {
+        // debugging info
+        std::println("\033[2J\033[1;1H {}", std::string(*this));
+
+        this->world.drawPlayerPOV(renderer, this->player);
         return *this;
 }
 
@@ -39,7 +53,7 @@ Game::operator std::string() const {
         while (std::getline(worldss, line)) {
                 ss << "\t" << line << std::endl;
         }
-        std::stringstream playerss(this->players[0]);
+        std::stringstream playerss(this->player);
         while (std::getline(playerss, line)) {
                 ss << "\t" << line << std::endl;
         }

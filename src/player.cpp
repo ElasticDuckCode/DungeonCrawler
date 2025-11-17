@@ -1,9 +1,13 @@
 #include "player.hpp"
+#include <iostream>
 
 Player::Player() {
         this->location[0] = 0;
         this->location[1] = 0;
         this->direction = Direction::NORTH;
+}
+
+Player::~Player() {
 }
 
 Player::operator std::string() const {

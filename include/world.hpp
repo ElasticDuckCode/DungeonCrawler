@@ -2,7 +2,9 @@
 #define WORLD_HPP
 
 #include "Eigen/Dense"
+#include "SDL3/SDL.h"
 #include "entity.hpp"
+#include "player.hpp"
 #include <string>
 #include <vector>
 
@@ -13,6 +15,8 @@ public:
         ~World();
 
         Eigen::Vector2<int> findPlayerSpawn();
+
+        World& drawPlayerPOV(SDL_Renderer* renderer, Player player);
 
         operator std::string() const;
 
