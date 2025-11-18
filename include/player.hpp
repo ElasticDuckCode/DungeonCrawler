@@ -1,5 +1,4 @@
-#ifndef PLAYER_HPP
-#define PLAYER_HPP
+#pragma once
 
 #include <Eigen/Dense>
 
@@ -14,5 +13,3 @@ public:
         Direction direction;
         operator std::string() const;
 };
-
-#endif

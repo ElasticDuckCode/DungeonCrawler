@@ -1,5 +1,4 @@
-#ifndef ENTITY_HPP
-#define ENTITY_HPP
+#pragma once
 
 #include <string>
 
@@ -15,5 +14,3 @@ public:
 private:
         EntityType code;
 };
-
-#endif

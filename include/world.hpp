@@ -1,5 +1,4 @@
-#ifndef WORLD_HPP
-#define WORLD_HPP
+#pragma once
 
 #include "Eigen/Dense"
 #include "SDL3/SDL.h"
@@ -25,5 +24,3 @@ private:
         int nRows;
         int nCols;
 };
-
-#endif

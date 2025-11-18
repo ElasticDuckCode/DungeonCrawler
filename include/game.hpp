@@ -1,5 +1,4 @@
-#ifndef GAME_HPP
-#define GAME_HPP
+#pragma once
 
 #include "SDL3/SDL.h"
 #include "player.hpp"
@@ -24,5 +23,3 @@ private:
         Player player;
         std::filesystem::path dataPath;
 };
-
-#endif
