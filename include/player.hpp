@@ -4,6 +4,13 @@
 
 enum class Direction { NORTH, SOUTH, EAST, WEST };
 
+constexpr Direction Directions[4] = {
+    Direction::NORTH,
+    Direction::SOUTH,
+    Direction::EAST,
+    Direction::WEST,
+};
+
 class Player {
 public: // methods
         Player();

@@ -67,27 +67,25 @@ Eigen::Vector2<int> World::findPlayerSpawn() {
 
 World& World::drawPlayerPOV(SDL_Renderer* renderer, const Player* player) {
 
-        float angle = 0;
+        float playerAngle = 0;
+
         switch (player->direction) {
         case Direction::NORTH:
-                angle = 0;
+                playerAngle = 0;
                 break;
         case Direction::SOUTH:
-                angle = std::numbers::pi;
+                playerAngle = std::numbers::pi;
                 break;
         case Direction::EAST:
-                angle = -std::numbers::pi / 2;
+                playerAngle = -std::numbers::pi / 2;
                 break;
         case Direction::WEST:
-                angle = std::numbers::pi / 2;
+                playerAngle = std::numbers::pi / 2;
                 break;
         }
 
-        // TODO: Draw all walls needed rather than just one aligned with player
-        Eigen::Matrix<float, 4, 4> walls = this->buildWall(player->direction);
-
         // construct rotation matrix based on player direction
-        Eigen::Matrix<float, 4, 4> R = this->buildRotationMatrix(angle);
+        Eigen::Matrix<float, 4, 4> R = this->buildRotationMatrix(playerAngle);
 
         // determine player location in world-space, centered on 1x1x1 grid tile
         Eigen::Vector4<float> playerPosition;
@@ -101,97 +99,111 @@ World& World::drawPlayerPOV(SDL_Renderer* renderer, const Player* player) {
 
         // get aspect ratio of screen
         int width, height;
-        SDL_GetWindowSize(SDL_GetRenderWindow(renderer), &width, &height);
+        SDL_GetWindowSizeInPixels(SDL_GetRenderWindow(renderer), &width, &height);
         float aspect = float(width) / height;
 
         // check every grid in the level, and if non-empty entity, draw it.
         Eigen::Matrix<float, 4, 4> gridWalls = {};
-        for (int i = 0; i < this->nRows; i++) {
-                for (int j = 0; j < this->nCols; j++) {
+        for (int j = 0; j < this->nCols; j++) {
+                for (int i = 0; i < this->nRows; i++) {
                         if ((this->level[i * this->nCols + j] == EntityType::EMPTY) ||
                             (this->level[i * this->nCols + j] == EntityType::PLAYER_SPAWN)) {
                                 continue;
                         }
 
-                        Eigen::Vector4<float> gridPosition;
-                        gridPosition[0] = j + 0.5;
-                        gridPosition[1] = 0.0;
-                        gridPosition[2] = this->nRows - (i + 0.5);
-                        gridPosition[3] = 0;
+                        for (Direction direction : Directions) {
+                                if (direction != Direction::NORTH) {
+                                        continue;
+                                }
 
-                        // Move wall to location of grid
-                        gridWalls = walls.colwise() + gridPosition;
+                                // TODO: Draw all walls needed rather than just one aligned with player
+                                Eigen::Matrix<float, 4, 4> walls = this->buildWall(direction);
 
-                        // Wall relatvive to player camera
-                        gridWalls = gridWalls.colwise() - playerPosition;
+                                Eigen::Vector4<float> gridPosition;
+                                gridPosition[0] = j + 0.5;
+                                gridPosition[1] = 0.0;
+                                gridPosition[2] = this->nRows - (i + 0.5);
+                                gridPosition[3] = 0;
 
-                        // Rotate relative to player direction
-                        gridWalls = R * gridWalls;
+                                // Move wall to location of grid
+                                gridWalls = walls.colwise() + gridPosition;
 
-                        // Determine if wall behind player (and not visable);
-                        // if (gridPosition[2] <= 0.0) {
-                        //         continue;
-                        // }
+                                // Wall relatvive to player camera
+                                gridWalls = gridWalls.colwise() - playerPosition;
 
-                        // Project wall onto screen-space
-                        Eigen::Matrix<float, 3, 4> gridScreen = P * gridWalls;
-                        std::cout << gridScreen << std::endl << std::endl;
-                        Eigen::RowVector<float, 4> gridScale = gridScreen.row(gridScreen.rows() - 1);
-                        gridScreen = (gridScreen.array().rowwise() / gridScale.array()).matrix();
+                                // Rotate relative to player direction
+                                gridWalls = R * gridWalls;
 
-                        gridScreen.row(0) = gridScreen.row(0) * width / 2;
-                        gridScreen.row(1) = gridScreen.row(1) * (aspect * height) / 2;
-                        gridScreen.row(0) = gridScreen.row(0).array() + width / 2;
-                        gridScreen.row(1) = -gridScreen.row(1).array() + height / 2;
+                                // Calculate average of vertices to determine if center is behind player.
+                                Eigen::Vector4<float> b = {0.25, 0.25, 0.25, 0.25};
+                                Eigen::RowVector4<float> a = {0, 0, 1, 0};
+                                Eigen::Matrix<float, 1, 1> z = a * gridWalls * b;
+                                std::cout << z[0, 0] << std::endl;
+                                if (z[0, 0] <= 0) {
+                                        continue;
+                                }
 
-                        // Draw
-                        std::vector<SDL_Vertex> verts{
-                            {
-                                SDL_FPoint{gridScreen[0, 0], gridScreen[1, 0]},
-                                SDL_FColor{0.5f, 0.5f, 0.5f, 1.0f},
-                                SDL_FPoint{0, 0},
-                            },
-                            {
-                                SDL_FPoint{gridScreen[0, 1], gridScreen[1, 1]},
-                                SDL_FColor{0.5f, 0.5f, 0.5f, 1.0f},
-                                SDL_FPoint{0, 0},
-                            },
-                            {
-                                SDL_FPoint{gridScreen[0, 2], gridScreen[1, 2]},
-                                SDL_FColor{0.5f, 0.5f, 0.5f, 1.0f},
-                                SDL_FPoint{0, 0},
-                            },
-                        };
-                        SDL_RenderGeometry(renderer, nullptr, verts.data(), verts.size(), nullptr, 0);
+                                // Project wall onto screen-space
+                                Eigen::Matrix<float, 3, 4> gridScreen = P * gridWalls;
+                                Eigen::RowVector<float, 4> gridScale = gridScreen.row(gridScreen.rows() - 1);
+                                gridScreen = (gridScreen.array().rowwise() / gridScale.array()).matrix();
 
-                        verts = {
-                            {
-                                SDL_FPoint{gridScreen[0, 2], gridScreen[1, 2]},
-                                SDL_FColor{0.5f, 0.5f, 0.5f, 1.0f},
-                                SDL_FPoint{0, 0},
-                            },
-                            {
-                                SDL_FPoint{gridScreen[0, 3], gridScreen[1, 3]},
-                                SDL_FColor{0.5f, 0.5f, 0.5f, 1.0f},
-                                SDL_FPoint{0, 0},
-                            },
-                            {
-                                SDL_FPoint{gridScreen[0, 0], gridScreen[1, 0]},
-                                SDL_FColor{0.5f, 0.5f, 0.5f, 1.0f},
-                                SDL_FPoint{0, 0},
-                            },
-                        };
-                        SDL_RenderGeometry(renderer, nullptr, verts.data(), verts.size(), nullptr, 0);
+                                gridScreen.row(0) = gridScreen.row(0) * (width / aspect) / 2;
+                                gridScreen.row(1) = gridScreen.row(1) * (1 * height) / 2;
+                                gridScreen.row(0) = gridScreen.row(0).array() + width / 2;
+                                gridScreen.row(1) = -gridScreen.row(1).array() + height / 2;
 
-                        SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
-                        SDL_RenderLine(renderer, gridScreen[0, 0], gridScreen[1, 0], gridScreen[0, 1],
-                                       gridScreen[1, 1]);
-                        SDL_RenderLine(renderer, gridScreen[0, 1], gridScreen[1, 1], gridScreen[0, 2],
-                                       gridScreen[1, 2]);
-                        SDL_RenderLine(renderer, gridScreen[0, 2], gridScreen[1, 2], gridScreen[0, 3],
-                                       gridScreen[1, 3]);
-                        SDL_RenderLine(renderer, gridScreen[0, 3], gridScreen[1, 3], gridScreen[0, 0],
-                                       gridScreen[1, 0]);
+                                // Draw
+                                std::vector<SDL_Vertex> verts{
+                                    {
+                                        SDL_FPoint{gridScreen[0, 0], gridScreen[1, 0]},
+                                        SDL_FColor{0.5f, 0.5f, 0.5f, 1.0f},
+                                        SDL_FPoint{0, 0},
+                                    },
+                                    {
+                                        SDL_FPoint{gridScreen[0, 1], gridScreen[1, 1]},
+                                        SDL_FColor{0.5f, 0.5f, 0.5f, 1.0f},
+                                        SDL_FPoint{0, 0},
+                                    },
+                                    {
+                                        SDL_FPoint{gridScreen[0, 2], gridScreen[1, 2]},
+                                        SDL_FColor{0.5f, 0.5f, 0.5f, 1.0f},
+                                        SDL_FPoint{0, 0},
+                                    },
+                                };
+                                SDL_RenderGeometry(renderer, nullptr, verts.data(), verts.size(), nullptr, 0);
+
+                                verts = {
+                                    {
+                                        SDL_FPoint{gridScreen[0, 2], gridScreen[1, 2]},
+                                        SDL_FColor{0.5f, 0.5f, 0.5f, 1.0f},
+                                        SDL_FPoint{0, 0},
+                                    },
+                                    {
+                                        SDL_FPoint{gridScreen[0, 3], gridScreen[1, 3]},
+                                        SDL_FColor{0.5f, 0.5f, 0.5f, 1.0f},
+                                        SDL_FPoint{0, 0},
+                                    },
+                                    {
+                                        SDL_FPoint{gridScreen[0, 0], gridScreen[1, 0]},
+                                        SDL_FColor{0.5f, 0.5f, 0.5f, 1.0f},
+                                        SDL_FPoint{0, 0},
+                                    },
+                                };
+                                SDL_RenderGeometry(renderer, nullptr, verts.data(), verts.size(), nullptr, 0);
+
+                                SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
+                                SDL_RenderLine(renderer, gridScreen[0, 0], gridScreen[1, 0], gridScreen[0, 1],
+                                               gridScreen[1, 1]);
+                                SDL_RenderLine(renderer, gridScreen[0, 1], gridScreen[1, 1], gridScreen[0, 2],
+                                               gridScreen[1, 2]);
+                                SDL_RenderLine(renderer, gridScreen[0, 1], gridScreen[1, 1], gridScreen[0, 3],
+                                               gridScreen[1, 3]);
+                                SDL_RenderLine(renderer, gridScreen[0, 2], gridScreen[1, 2], gridScreen[0, 3],
+                                               gridScreen[1, 3]);
+                                SDL_RenderLine(renderer, gridScreen[0, 3], gridScreen[1, 3], gridScreen[0, 0],
+                                               gridScreen[1, 0]);
+                        }
                 }
         }
 

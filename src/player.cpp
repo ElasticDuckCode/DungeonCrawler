@@ -5,7 +5,7 @@ Player::Player() {
         this->location[0] = 0;
         this->location[1] = 0;
         this->direction = Direction::NORTH;
-        this->fov = 90;
+        this->fov = 100;
 }
 
 Player::~Player() {
