@@ -41,7 +41,7 @@ Game& Game::RenderDrawWorld(SDL_Renderer* renderer) {
         // debugging info
         std::println("\033[2J\033[1;1H {}", std::string(*this));
 
-        this->world.drawPlayerPOV(renderer, this->player);
+        this->world.drawPlayerPOV(renderer, &this->player);
         return *this;
 }
 

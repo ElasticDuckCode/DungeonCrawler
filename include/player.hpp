@@ -5,11 +5,13 @@
 enum class Direction { NORTH, SOUTH, EAST, WEST };
 
 class Player {
-public:
+public: // methods
         Player();
         ~Player();
+        operator std::string() const;
 
+public: // members
         Eigen::Vector2<int> location;
         Direction direction;
-        operator std::string() const;
+        float fov;
 };
