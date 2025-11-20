@@ -54,8 +54,8 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
 
 SDL_AppResult SDL_AppIterate(void* appstate) {
         AppState* state = (AppState*)appstate;
-        // SDL_SetRenderDrawColor(state->renderer, 0, 0, 0, 0);
-        SDL_SetRenderDrawColor(state->renderer, 245, 245, 245, 0);
+        SDL_SetRenderDrawColor(state->renderer, 0, 0, 0, 0);
+        // SDL_SetRenderDrawColor(state->renderer, 245, 245, 245, 0);
         SDL_RenderClear(state->renderer);
         state->game->RenderDrawWorld(state->renderer);
         SDL_RenderPresent(state->renderer);

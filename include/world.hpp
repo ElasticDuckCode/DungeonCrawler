@@ -5,6 +5,7 @@
 #include "entity.hpp"
 #include "player.hpp"
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 class World {
@@ -23,6 +24,8 @@ private:
         Eigen::Matrix<float, 4, 4> buildRotationMatrix(float angle);
         Eigen::Matrix<float, 3, 4> buildCameraMatrix(float fov);
         Eigen::Matrix<float, 4, 4> buildWall(Direction direction);
+        void getVisableEntities(const Player* player, std::unordered_set<int>* idx);
+        void getNextVisableEntity(const Player* player, std::unordered_set<int>* idx, int i, int j);
 
         std::vector<Entity> level;
         int nRows;

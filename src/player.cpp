@@ -6,6 +6,7 @@ Player::Player() {
         this->location[1] = 0;
         this->direction = Direction::NORTH;
         this->fov = 100;
+        this->viewDistance = 5;
 }
 
 Player::~Player() {

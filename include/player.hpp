@@ -2,13 +2,20 @@
 
 #include <Eigen/Dense>
 
-enum class Direction { NORTH, SOUTH, EAST, WEST };
+enum class Direction { NORTH = 0, SOUTH = 1, EAST = 2, WEST = 3 };
 
 constexpr Direction Directions[4] = {
     Direction::NORTH,
     Direction::SOUTH,
     Direction::EAST,
     Direction::WEST,
+};
+
+constexpr Direction DirectionOrder[4][4] = {
+    {Direction::NORTH, Direction::WEST, Direction::EAST, Direction::SOUTH},
+    {Direction::SOUTH, Direction::EAST, Direction::WEST, Direction::NORTH},
+    {Direction::EAST, Direction::NORTH, Direction::SOUTH, Direction::WEST},
+    {Direction::WEST, Direction::SOUTH, Direction::NORTH, Direction::EAST},
 };
 
 class Player {
@@ -21,4 +28,5 @@ public: // members
         Eigen::Vector2<int> location;
         Direction direction;
         float fov;
+        int viewDistance;
 };
