@@ -45,3 +45,10 @@ constexpr float wallVerts[4][4][4] = {
         {-0.5, 0.0, -0.5, 1.0}, // South-Bottom-Left
     },
 };
+
+constexpr float floorVert[4][4] = {
+    {-0.5, 0.0, 0.5, 1.0},  // North-Bottom-Left
+    {0.5, 0.0, 0.5, 1.0},   // North-Bottom-Right
+    {0.5, 0.0, -0.5, 1.0},  // South-Bottom-Right
+    {-0.5, 0.0, -0.5, 1.0}, // South-Bottom-Left
+};

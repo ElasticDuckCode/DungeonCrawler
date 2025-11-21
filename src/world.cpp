@@ -43,8 +43,8 @@ World::World(const char* fname) : World() {
 World::~World() {
 }
 
-Eigen::Vector2<int> World::findPlayerSpawn() {
-        Eigen::Vector2<int> location = {0, 0};
+Vector2<int> World::findPlayerSpawn() {
+        Vector2<int> location = {0, 0};
 
         int i, j = 0;
         bool isFound = false;
@@ -69,120 +69,42 @@ Eigen::Vector2<int> World::findPlayerSpawn() {
 
 World& World::drawPlayerPOV(SDL_Renderer* renderer, const Player* player) {
 
-        float playerAngle = 0;
-
-        switch (player->direction) {
-        case Direction::NORTH:
-                playerAngle = 0;
-                break;
-        case Direction::SOUTH:
-                playerAngle = std::numbers::pi;
-                break;
-        case Direction::EAST:
-                playerAngle = -std::numbers::pi / 2;
-                break;
-        case Direction::WEST:
-                playerAngle = std::numbers::pi / 2;
-                break;
-        }
-
-        // construct rotation matrix based on player direction
-        Eigen::Matrix<float, 4, 4> R = this->buildRotationMatrix(playerAngle);
-
-        // determine player location in world-space, centered on 1x1x1 grid tile
-        Eigen::Vector4<float> playerPosition;
-        playerPosition[0] = player->location[1] + 0.5;
-        playerPosition[1] = 0.5;
-        playerPosition[2] = this->nRows - (player->location[0] + 0.5);
-        playerPosition[3] = 0;
-
         // Screen-space projection matrix
-        Eigen::Matrix<float, 3, 4> P = this->buildCameraMatrix(player->fov);
+        Matrix3x4<float> P = this->buildCameraMatrix(player->fov);
 
         // get aspect ratio of screen
         int width, height;
         SDL_GetWindowSizeInPixels(SDL_GetRenderWindow(renderer), &width, &height);
         float aspect = float(width) / height;
 
-        // check every grid in the level, and if non-empty entity, mark it as visable.
-        Eigen::Matrix<float, 4, 4> gridWalls = {};
-        std::unordered_set<int> visableEntityIdx{};
-        this->getVisableEntities(player, &visableEntityIdx);
+        // Obtain list of all entities which are visable.
+        uset<int> visableEntityIdx = this->getVisableEntities(player);
 
         // For each entity, detrmine which walls need to be drawn.
-        std::vector<Eigen::Matrix<float, 4, 4>> wallVector;
-        Eigen::RowVector4<float> v1{0, 0, 1, 0};
-        Eigen::Vector4<float> v2{0.25, 0.25, 0.25, 0.25};
-        Eigen::RowVector4<float> v3{1, 0, 0, 0};
+        std::vector<Matrix4x4<float>> wallVector = this->getVisableWallVertices(player, &visableEntityIdx);
 
-        std::println("There are {} visable entities.", visableEntityIdx.size());
+        // TODO: Floor always visable.
+        std::vector<Matrix4x4<float>> floorVector = this->getVisableFloorVertices(player, &visableEntityIdx);
 
-        std::unordered_set<int> visableWallIdx = this->filterVisableEntities(&visableEntityIdx, EntityType::WALL);
+        // Combine
+        std::vector<Matrix4x4<float>> vertVector;
+        vertVector.insert(vertVector.begin(), wallVector.begin(), wallVector.end());
+        vertVector.insert(vertVector.begin(), floorVector.begin(), floorVector.end());
 
-        std::println("There are {} visable wall entities.", visableWallIdx.size());
-
-        for (int idx : visableWallIdx) {
-                int i = idx / this->nCols;
-                int j = idx % this->nCols;
-
-                Eigen::Vector4<float> gridPosition;
-                gridPosition[0] = j + 0.5;
-                gridPosition[1] = 0.0;
-                gridPosition[2] = this->nRows - (i + 0.5);
-                gridPosition[3] = 0;
-
-                // TODO: need to draw all directions
-                int playerDirInt = std::to_underlying(player->direction);
-                for (Direction direction : DirectionOrder[playerDirInt]) {
-                        // TODO: Permit drawing wall if there isn't one in front.
-
-                        Eigen::Matrix<float, 4, 4> walls = this->buildWall(direction);
-
-                        // Move wall to location of grid
-                        gridWalls = walls.colwise() + gridPosition;
-
-                        // Wall relatvive to player camera
-                        gridWalls = gridWalls.colwise() - playerPosition;
-
-                        // Rotate relative to player direction
-                        gridWalls = R * gridWalls;
-
-                        // Calculate average of vertices to determine if center is behind player.
-                        float z = v1 * gridWalls * v2;
-                        if (z <= 0) {
-                                continue;
-                        }
-
-                        // Determine if left/right wall should be drawn
-                        bool isRightWall = (Directions[(playerDirInt + 1) % 4] == direction);
-                        bool isLeftWall = (Directions[(playerDirInt - 1) % 4] == direction);
-                        float x = v3 * gridWalls * v2;
-                        if (x < 0 && isLeftWall) {
-                                continue;
-                        }
-                        if (x > 0 && isRightWall) {
-                                continue;
-                        }
-
-                        wallVector.push_back(gridWalls);
-                }
-        }
-
-        std::println("There are {} visable walls.", wallVector.size());
-
-        // Sort the walls in terms of distance along focal z-axis
-        std::sort(wallVector.begin(), wallVector.end(), [v1, v2](auto a, auto b) {
+        // Sort in terms of distance along focal z-axis
+        RowVector4<float> v1{0, 0, 1, 0};
+        Vector4<float> v2{0.25, 0.25, 0.25, 0.25};
+        RowVector4<float> v3{1, 0, 0, 0};
+        std::sort(vertVector.begin(), vertVector.end(), [v1, v2](auto a, auto b) {
                 float za = v1 * a * v2;
                 float zb = v1 * b * v2;
                 return za > zb;
         });
 
-        std::println("There are {} visable walls after sort.", wallVector.size());
-
-        for (auto gridWalls : wallVector) {
+        for (auto vertices : vertVector) {
                 // Project wall onto screen-space
-                Eigen::Matrix<float, 3, 4> gridScreen = P * gridWalls;
-                Eigen::RowVector<float, 4> gridScale = gridScreen.row(gridScreen.rows() - 1);
+                Matrix3x4<float> gridScreen = P * vertices;
+                RowVector4<float> gridScale = gridScreen.row(gridScreen.rows() - 1);
                 gridScreen = (gridScreen.array().rowwise() / gridScale.array()).matrix();
 
                 gridScreen.row(0) = gridScreen.row(0) * (width) / 2;
@@ -244,10 +166,28 @@ World& World::drawEntityInPlayerPOV(SDL_Renderer* renderer, const Player* player
         return *this;
 }
 
-Eigen::Matrix<float, 4, 4> World::buildRotationMatrix(float angle) {
+Matrix4x4<float> World::buildRotationMatrix(const Player* player) {
+
+        float angle = 0;
+
+        switch (player->direction) {
+        case Direction::NORTH:
+                angle = 0;
+                break;
+        case Direction::SOUTH:
+                angle = std::numbers::pi;
+                break;
+        case Direction::EAST:
+                angle = -std::numbers::pi / 2;
+                break;
+        case Direction::WEST:
+                angle = std::numbers::pi / 2;
+                break;
+        }
+
         // left-handed due to z-direction being forward in this game.
         // Therefore must negate angle.
-        return Eigen::Matrix<float, 4, 4>{
+        return Matrix4x4<float>{
             {std::cos(-angle), 0, std::sin(-angle), 0},
             {0, 1, 0, 0},
             {-std::sin(-angle), 0, std::cos(-angle), 0},
@@ -255,20 +195,20 @@ Eigen::Matrix<float, 4, 4> World::buildRotationMatrix(float angle) {
         };
 }
 
-Eigen::Matrix<float, 3, 4> World::buildCameraMatrix(float fov_d) {
+Matrix3x4<float> World::buildCameraMatrix(float fov_d) {
         float fov = std::numbers::pi * fov_d / 180; // convert to radians
         float f = 1 / std::tan(fov / 2);
-        return Eigen::Matrix<float, 3, 4>{
+        return Matrix3x4<float>{
             {f, 0, 0, 0},
             {0, f, 0, 0},
             {0, 0, 1, 0},
         };
 }
 
-Eigen::Matrix<float, 4, 4> World::buildWall(Direction direction) {
+Matrix4x4<float> World::buildWall(Direction direction) {
         int idx = std::to_underlying(direction);
 
-        Eigen::Matrix<float, 4, 4> walls;
+        Matrix4x4<float> walls;
         for (int i = 0; i < 4; i++) {
                 for (int j = 0; j < 4; j++) {
                         walls[i, j] = wallVerts[idx][i][j];
@@ -278,19 +218,34 @@ Eigen::Matrix<float, 4, 4> World::buildWall(Direction direction) {
         return walls;
 }
 
-void World::getVisableEntities(const Player* player, std::unordered_set<int>* idx) {
+Matrix4x4<float> World::buildFloor() {
+
+        Matrix4x4<float> floor;
+        for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 4; j++) {
+                        floor[i, j] = floorVert[i][j];
+                }
+        }
+        floor.transposeInPlace();
+        return floor;
+}
+
+uset<int> World::getVisableEntities(const Player* player) {
 
         // Start at player location
         int i = player->location[0];
         int j = player->location[1];
 
-        // Recursively call function to fill entities vector
-        this->getNextVisableEntity(player, idx, i, j);
+        // Initilize unordered set to store results
+        uset<int> idx;
 
-        return;
+        // Recursively call function to fill entities vector
+        this->getNextVisableEntity(player, &idx, i, j);
+
+        return idx;
 }
 
-void World::getNextVisableEntity(const Player* player, std::unordered_set<int>* idx, int i, int j) {
+void World::getNextVisableEntity(const Player* player, uset<int>* idx, int i, int j) {
 
         // Check that index doesn't exceed player view distance
         int x = player->location[0];
@@ -343,14 +298,143 @@ void World::getNextVisableEntity(const Player* player, std::unordered_set<int>* 
         return;
 }
 
-std::unordered_set<int> World::filterVisableEntities(std::unordered_set<int>* idx, EntityType etype) {
-        std::unordered_set<int> idxOut{};
+uset<int> World::filterVisableEntities(uset<int>* idx, EntityType etype) {
+        uset<int> idxOut{};
         for (int i : *idx) {
                 if (this->level[i] == etype) {
                         idxOut.insert(i);
                 }
         }
         return idxOut;
+}
+
+std::vector<Matrix4x4<float>> World::getVisableFloorVertices(const Player* player, uset<int>* idx) {
+
+        // initalize return vector
+        std::vector<Matrix4x4<float>> vertices;
+
+        // determine which entities are walls
+        uset<int> floorIdx = this->filterVisableEntities(idx, EntityType::FLOOR);
+
+        // initalize matrices for wall loop
+        Matrix4x4<float> gridFloor = {};
+        RowVector4<float> v1{0, 0, 1, 0};
+        Vector4<float> v2{0.25, 0.25, 0.25, 0.25};
+        RowVector4<float> v3{1, 0, 0, 0};
+
+        // determine player location in world-space, centered on 1x1x1 grid tile
+        Vector4<float> playerPosition;
+        playerPosition[0] = player->location[1] + 0.5;
+        playerPosition[1] = 0.5;
+        playerPosition[2] = this->nRows - (player->location[0] + 0.5);
+        playerPosition[3] = 0;
+
+        // construct rotation matrix based on player direction
+        Matrix4x4<float> R = this->buildRotationMatrix(player);
+
+        // build persistent floor vertices
+        Matrix4x4<float> floor = this->buildFloor();
+
+        for (int idx : floorIdx) {
+                int i = idx / this->nCols;
+                int j = idx % this->nCols;
+
+                Eigen::Vector4<float> gridPosition;
+                gridPosition[0] = j + 0.5;
+                gridPosition[1] = 0.0;
+                gridPosition[2] = this->nRows - (i + 0.5);
+                gridPosition[3] = 0;
+
+                // Move wall to location of grid
+                gridFloor = floor.colwise() + gridPosition;
+
+                // Wall relatvive to player camera
+                gridFloor = gridFloor.colwise() - playerPosition;
+
+                // Rotate relative to player direction
+                gridFloor = R * gridFloor;
+
+                // Calculate average of vertices to determine if center is behind player.
+                float z = v1 * gridFloor * v2;
+                if (z <= 0) {
+                        continue;
+                }
+
+                vertices.push_back(gridFloor);
+        }
+        return vertices;
+}
+
+std::vector<Matrix4x4<float>> World::getVisableWallVertices(const Player* player, uset<int>* idx) {
+
+        // initalize return vector
+        std::vector<Matrix4x4<float>> vertices;
+
+        // determine which entities are walls
+        uset<int> wallIdx = this->filterVisableEntities(idx, EntityType::WALL);
+
+        // initalize matrices for wall loop
+        Matrix4x4<float> gridWalls = {};
+        RowVector4<float> v1{0, 0, 1, 0};
+        Vector4<float> v2{0.25, 0.25, 0.25, 0.25};
+        RowVector4<float> v3{1, 0, 0, 0};
+
+        // determine player location in world-space, centered on 1x1x1 grid tile
+        Vector4<float> playerPosition;
+        playerPosition[0] = player->location[1] + 0.5;
+        playerPosition[1] = 0.5;
+        playerPosition[2] = this->nRows - (player->location[0] + 0.5);
+        playerPosition[3] = 0;
+
+        // construct rotation matrix based on player direction
+        Matrix4x4<float> R = this->buildRotationMatrix(player);
+
+        for (int idx : wallIdx) {
+                int i = idx / this->nCols;
+                int j = idx % this->nCols;
+
+                Eigen::Vector4<float> gridPosition;
+                gridPosition[0] = j + 0.5;
+                gridPosition[1] = 0.0;
+                gridPosition[2] = this->nRows - (i + 0.5);
+                gridPosition[3] = 0;
+
+                int playerDirInt = std::to_underlying(player->direction);
+                for (Direction direction : DirectionOrder[playerDirInt]) {
+                        // TODO: Permit drawing wall if there isn't one in front.
+
+                        Matrix4x4<float> walls = this->buildWall(direction);
+
+                        // Move wall to location of grid
+                        gridWalls = walls.colwise() + gridPosition;
+
+                        // Wall relatvive to player camera
+                        gridWalls = gridWalls.colwise() - playerPosition;
+
+                        // Rotate relative to player direction
+                        gridWalls = R * gridWalls;
+
+                        // Calculate average of vertices to determine if center is behind player.
+                        float z = v1 * gridWalls * v2;
+                        if (z <= 0) {
+                                continue;
+                        }
+
+                        // Determine if left/right wall should be drawn
+                        bool isRightWall = (Directions[(playerDirInt + 1) % 4] == direction);
+                        bool isLeftWall = (Directions[(playerDirInt - 1) % 4] == direction);
+                        float x = v3 * gridWalls * v2;
+                        if (x < 0 && isLeftWall) {
+                                continue;
+                        }
+                        if (x > 0 && isRightWall) {
+                                continue;
+                        }
+
+                        vertices.push_back(gridWalls);
+                }
+        }
+        return vertices;
 }
 
 World::operator std::string() const {

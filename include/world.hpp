@@ -8,25 +8,38 @@
 #include <unordered_set>
 #include <vector>
 
+template <typename T> using Matrix4x4 = Eigen::Matrix<T, 4, 4>;
+template <typename T> using Matrix3x4 = Eigen::Matrix<T, 3, 4>;
+template <typename T> using Vector2 = Eigen::Vector<T, 2>;
+template <typename T> using Vector4 = Eigen::Vector<T, 4>;
+template <typename T> using RowVector4 = Eigen::RowVector<T, 4>;
+template <typename T> using uset = std::unordered_set<T>;
+
 class World {
+
 public:
         World();
         World(const char* fname);
         ~World();
 
 public:
-        Eigen::Vector2<int> findPlayerSpawn();
+        Vector2<int> findPlayerSpawn();
         World& drawPlayerPOV(SDL_Renderer* renderer, const Player* player);
         World& drawEntityInPlayerPOV(SDL_Renderer* renderer, const Player* player);
         operator std::string() const;
 
 private:
-        Eigen::Matrix<float, 4, 4> buildRotationMatrix(float angle);
-        Eigen::Matrix<float, 3, 4> buildCameraMatrix(float fov);
-        Eigen::Matrix<float, 4, 4> buildWall(Direction direction);
-        void getVisableEntities(const Player* player, std::unordered_set<int>* idx);
-        void getNextVisableEntity(const Player* player, std::unordered_set<int>* idx, int i, int j);
-        std::unordered_set<int> filterVisableEntities(std::unordered_set<int>* idx, EntityType etype);
+        Matrix4x4<float> buildRotationMatrix(const Player* player);
+        Matrix3x4<float> buildCameraMatrix(float fov);
+        Matrix4x4<float> buildWall(Direction direction);
+        Matrix4x4<float> buildFloor();
+
+        uset<int> getVisableEntities(const Player* player);
+        uset<int> filterVisableEntities(uset<int>* idx, EntityType etype);
+        std::vector<Matrix4x4<float>> getVisableFloorVertices(const Player* player, uset<int>* idx);
+        std::vector<Matrix4x4<float>> getVisableWallVertices(const Player* player, uset<int>* idx);
+
+        void getNextVisableEntity(const Player* player, uset<int>* idx, int i, int j);
 
         std::vector<Entity> level;
         int nRows;
