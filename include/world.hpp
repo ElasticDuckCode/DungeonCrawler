@@ -33,10 +33,12 @@ private:
         Matrix3x4<float> buildCameraMatrix(float fov);
         Matrix4x4<float> buildWall(Direction direction);
         Matrix4x4<float> buildFloor();
+        Matrix4x4<float> buildCeil();
 
         uset<int> getVisableEntities(const Player* player);
         uset<int> filterVisableEntities(uset<int>* idx, EntityType etype);
         std::vector<Matrix4x4<float>> getVisableFloorVertices(const Player* player, uset<int>* idx);
+        std::vector<Matrix4x4<float>> getVisableCeilingVertices(const Player* player, uset<int>* idx);
         std::vector<Matrix4x4<float>> getVisableWallVertices(const Player* player, uset<int>* idx);
 
         void getNextVisableEntity(const Player* player, uset<int>* idx, int i, int j);

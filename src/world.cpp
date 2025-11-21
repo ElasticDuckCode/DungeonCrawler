@@ -83,13 +83,17 @@ World& World::drawPlayerPOV(SDL_Renderer* renderer, const Player* player) {
         // For each entity, detrmine which walls need to be drawn.
         std::vector<Matrix4x4<float>> wallVector = this->getVisableWallVertices(player, &visableEntityIdx);
 
-        // TODO: Floor always visable.
+        // TODO: Floor entities always visable.
         std::vector<Matrix4x4<float>> floorVector = this->getVisableFloorVertices(player, &visableEntityIdx);
+
+        // All visable entities have ceiling reguardless
+        std::vector<Matrix4x4<float>> ceilVector = this->getVisableCeilingVertices(player, &visableEntityIdx);
 
         // Combine
         std::vector<Matrix4x4<float>> vertVector;
         vertVector.insert(vertVector.begin(), wallVector.begin(), wallVector.end());
         vertVector.insert(vertVector.begin(), floorVector.begin(), floorVector.end());
+        vertVector.insert(vertVector.begin(), ceilVector.begin(), ceilVector.end());
 
         // Sort in terms of distance along focal z-axis
         RowVector4<float> v1{0, 0, 1, 0};
@@ -230,6 +234,18 @@ Matrix4x4<float> World::buildFloor() {
         return floor;
 }
 
+Matrix4x4<float> World::buildCeil() {
+
+        Matrix4x4<float> ceil;
+        for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 4; j++) {
+                        ceil[i, j] = ceilVert[i][j];
+                }
+        }
+        ceil.transposeInPlace();
+        return ceil;
+}
+
 uset<int> World::getVisableEntities(const Player* player) {
 
         // Start at player location
@@ -290,9 +306,9 @@ void World::getNextVisableEntity(const Player* player, uset<int>* idx, int i, in
         }
 
         // Add entity to list if not the player and not empty.
-        bool isEmpty = (this->level[vectorIdx] == EntityType::EMPTY);
+        // bool isEmpty = (this->level[vectorIdx] == EntityType::EMPTY);
         bool isPlayer = (this->level[vectorIdx] == EntityType::PLAYER);
-        if (!isPlayer && !isEmpty) {
+        if (!isPlayer) {
                 idx->insert(vectorIdx);
         }
         return;
@@ -361,6 +377,63 @@ std::vector<Matrix4x4<float>> World::getVisableFloorVertices(const Player* playe
                 }
 
                 vertices.push_back(gridFloor);
+        }
+        return vertices;
+}
+
+std::vector<Matrix4x4<float>> World::getVisableCeilingVertices(const Player* player, uset<int>* idx) {
+
+        // initalize return vector
+        std::vector<Matrix4x4<float>> vertices;
+
+        // determine which entities are walls
+        uset<int> Idx = *idx;
+
+        // initalize matrices for wall loop
+        Matrix4x4<float> gridCeil = {};
+        RowVector4<float> v1{0, 0, 1, 0};
+        Vector4<float> v2{0.25, 0.25, 0.25, 0.25};
+        RowVector4<float> v3{1, 0, 0, 0};
+
+        // determine player location in world-space, centered on 1x1x1 grid tile
+        Vector4<float> playerPosition;
+        playerPosition[0] = player->location[1] + 0.5;
+        playerPosition[1] = 0.5;
+        playerPosition[2] = this->nRows - (player->location[0] + 0.5);
+        playerPosition[3] = 0;
+
+        // construct rotation matrix based on player direction
+        Matrix4x4<float> R = this->buildRotationMatrix(player);
+
+        // build persistent floor vertices
+        Matrix4x4<float> ceil = this->buildCeil();
+
+        for (int idx : Idx) {
+                int i = idx / this->nCols;
+                int j = idx % this->nCols;
+
+                Eigen::Vector4<float> gridPosition;
+                gridPosition[0] = j + 0.5;
+                gridPosition[1] = 0.0;
+                gridPosition[2] = this->nRows - (i + 0.5);
+                gridPosition[3] = 0;
+
+                // Move wall to location of grid
+                gridCeil = ceil.colwise() + gridPosition;
+
+                // Wall relatvive to player camera
+                gridCeil = gridCeil.colwise() - playerPosition;
+
+                // Rotate relative to player direction
+                gridCeil = R * gridCeil;
+
+                // Calculate average of vertices to determine if center is behind player.
+                float z = v1 * gridCeil * v2;
+                if (z <= 0) {
+                        continue;
+                }
+
+                vertices.push_back(gridCeil);
         }
         return vertices;
 }

@@ -52,3 +52,10 @@ constexpr float floorVert[4][4] = {
     {0.5, 0.0, -0.5, 1.0},  // South-Bottom-Right
     {-0.5, 0.0, -0.5, 1.0}, // South-Bottom-Left
 };
+
+constexpr float ceilVert[4][4] = {
+    {-0.5, 1.0, 0.5, 1.0},  // North-Top-Left
+    {0.5, 1.0, 0.5, 1.0},   // North-Top-Right
+    {0.5, 1.0, -0.5, 1.0},  // South-Top-Right
+    {-0.5, 1.0, -0.5, 1.0}, // South-Top-Left
+};
