@@ -4,6 +4,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <print>
 #include <sstream>
 #include <utility>
 
@@ -103,14 +104,20 @@ World& World::drawPlayerPOV(SDL_Renderer* renderer, const Player* player) {
         SDL_GetWindowSizeInPixels(SDL_GetRenderWindow(renderer), &width, &height);
         float aspect = float(width) / height;
 
-        // check every grid in the level, and if non-empty entity, draw it.
+        // check every grid in the level, and if non-empty entity, mark it as visable.
         Eigen::Matrix<float, 4, 4> gridWalls = {};
         std::unordered_set<int> visableEntityIdx{};
         this->getVisableEntities(player, &visableEntityIdx);
-        std::vector<int> visableEntityVector(visableEntityIdx.begin(), visableEntityIdx.end());
-        // std::reverse(visableEntityVector.begin(), visableEntityVector.end());
 
-        for (int idx : visableEntityVector) {
+        // For each entity, detrmine which walls need to be drawn.
+        std::vector<Eigen::Matrix<float, 4, 4>> wallVector;
+        Eigen::RowVector4<float> v1{0, 0, 1, 0};
+        Eigen::Vector4<float> v2{0.25, 0.25, 0.25, 0.25};
+        Eigen::RowVector4<float> v3{1, 0, 0, 0};
+
+        std::println("There are {} visable entities.", visableEntityIdx.size());
+
+        for (int idx : visableEntityIdx) {
                 int i = idx / this->nCols;
                 int j = idx % this->nCols;
 
@@ -121,7 +128,10 @@ World& World::drawPlayerPOV(SDL_Renderer* renderer, const Player* player) {
                 gridPosition[3] = 0;
 
                 // TODO: need to draw all directions
-                for (Direction direction : DirectionOrder[std::to_underlying(player->direction)]) {
+                int playerDirInt = std::to_underlying(player->direction);
+                for (Direction direction : DirectionOrder[playerDirInt]) {
+                        // TODO: Permit drawing wall if there isn't one in front.
+
                         Eigen::Matrix<float, 4, 4> walls = this->buildWall(direction);
 
                         // Move wall to location of grid
@@ -134,74 +144,93 @@ World& World::drawPlayerPOV(SDL_Renderer* renderer, const Player* player) {
                         gridWalls = R * gridWalls;
 
                         // Calculate average of vertices to determine if center is behind player.
-                        Eigen::Vector4<float> b = {0.25, 0.25, 0.25, 0.25};
-                        Eigen::RowVector4<float> a = {0, 0, 1, 0};
-                        Eigen::Matrix<float, 1, 1> z = a * gridWalls * b;
-                        if (z[0, 0] <= 0) {
+                        float z = v1 * gridWalls * v2;
+                        if (z <= 0) {
                                 continue;
                         }
 
-                        // Project wall onto screen-space
-                        Eigen::Matrix<float, 3, 4> gridScreen = P * gridWalls;
-                        Eigen::RowVector<float, 4> gridScale = gridScreen.row(gridScreen.rows() - 1);
-                        gridScreen = (gridScreen.array().rowwise() / gridScale.array()).matrix();
+                        // Determine if left/right wall should be drawn
+                        bool isRightWall = (Directions[(playerDirInt + 1) % 4] == direction);
+                        bool isLeftWall = (Directions[(playerDirInt - 1) % 4] == direction);
+                        float x = v3 * gridWalls * v2;
+                        if (x < 0 && isLeftWall) {
+                                continue;
+                        }
+                        if (x > 0 && isRightWall) {
+                                continue;
+                        }
 
-                        gridScreen.row(0) = gridScreen.row(0) * (width) / 2;
-                        gridScreen.row(1) = gridScreen.row(1) * (aspect * height) / 2;
-                        gridScreen.row(0) = gridScreen.row(0).array() + width / 2;
-                        gridScreen.row(1) = -gridScreen.row(1).array() + height / 2;
-
-                        // Draw
-                        std::vector<SDL_Vertex> verts{
-                            {
-                                SDL_FPoint{gridScreen[0, 0], gridScreen[1, 0]},
-                                SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
-                                SDL_FPoint{0, 0},
-                            },
-                            {
-                                SDL_FPoint{gridScreen[0, 1], gridScreen[1, 1]},
-                                SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
-                                SDL_FPoint{0, 0},
-                            },
-                            {
-                                SDL_FPoint{gridScreen[0, 2], gridScreen[1, 2]},
-                                SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
-                                SDL_FPoint{0, 0},
-                            },
-                        };
-                        SDL_RenderGeometry(renderer, nullptr, verts.data(), verts.size(), nullptr, 0);
-
-                        verts = {
-                            {
-                                SDL_FPoint{gridScreen[0, 2], gridScreen[1, 2]},
-                                SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
-                                SDL_FPoint{0, 0},
-                            },
-                            {
-                                SDL_FPoint{gridScreen[0, 3], gridScreen[1, 3]},
-                                SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
-                                SDL_FPoint{0, 0},
-                            },
-                            {
-                                SDL_FPoint{gridScreen[0, 0], gridScreen[1, 0]},
-                                SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
-                                SDL_FPoint{0, 0},
-                            },
-                        };
-                        SDL_RenderGeometry(renderer, nullptr, verts.data(), verts.size(), nullptr, 0);
-
-                        SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
-                        SDL_RenderLine(renderer, gridScreen[0, 0], gridScreen[1, 0], gridScreen[0, 1],
-                                       gridScreen[1, 1]);
-                        SDL_RenderLine(renderer, gridScreen[0, 1], gridScreen[1, 1], gridScreen[0, 2],
-                                       gridScreen[1, 2]);
-                        SDL_RenderLine(renderer, gridScreen[0, 1], gridScreen[1, 1], gridScreen[0, 3],
-                                       gridScreen[1, 3]);
-                        SDL_RenderLine(renderer, gridScreen[0, 2], gridScreen[1, 2], gridScreen[0, 3],
-                                       gridScreen[1, 3]);
-                        SDL_RenderLine(renderer, gridScreen[0, 3], gridScreen[1, 3], gridScreen[0, 0],
-                                       gridScreen[1, 0]);
+                        wallVector.push_back(gridWalls);
                 }
+        }
+
+        std::println("There are {} visable walls.", wallVector.size());
+
+        // Sort the walls in terms of distance along focal z-axis
+        std::sort(wallVector.begin(), wallVector.end(), [v1, v2](auto a, auto b) {
+                float za = v1 * a * v2;
+                float zb = v1 * b * v2;
+                return za > zb;
+        });
+
+        std::println("There are {} visable walls after sort.", wallVector.size());
+
+        for (auto gridWalls : wallVector) {
+                // Project wall onto screen-space
+                Eigen::Matrix<float, 3, 4> gridScreen = P * gridWalls;
+                Eigen::RowVector<float, 4> gridScale = gridScreen.row(gridScreen.rows() - 1);
+                gridScreen = (gridScreen.array().rowwise() / gridScale.array()).matrix();
+
+                gridScreen.row(0) = gridScreen.row(0) * (width / aspect) / 2;
+                gridScreen.row(1) = gridScreen.row(1) * (1 * height) / 2;
+                gridScreen.row(0) = gridScreen.row(0).array() + width / 2;
+                gridScreen.row(1) = -gridScreen.row(1).array() + height / 2;
+
+                // Draw
+                std::vector<SDL_Vertex> verts{
+                    {
+                        SDL_FPoint{gridScreen[0, 0], gridScreen[1, 0]},
+                        SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
+                        SDL_FPoint{0, 0},
+                    },
+                    {
+                        SDL_FPoint{gridScreen[0, 1], gridScreen[1, 1]},
+                        SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
+                        SDL_FPoint{0, 0},
+                    },
+                    {
+                        SDL_FPoint{gridScreen[0, 2], gridScreen[1, 2]},
+                        SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
+                        SDL_FPoint{0, 0},
+                    },
+                };
+                SDL_RenderGeometry(renderer, nullptr, verts.data(), verts.size(), nullptr, 0);
+
+                verts = {
+                    {
+                        SDL_FPoint{gridScreen[0, 2], gridScreen[1, 2]},
+                        SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
+                        SDL_FPoint{0, 0},
+                    },
+                    {
+                        SDL_FPoint{gridScreen[0, 3], gridScreen[1, 3]},
+                        SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
+                        SDL_FPoint{0, 0},
+                    },
+                    {
+                        SDL_FPoint{gridScreen[0, 0], gridScreen[1, 0]},
+                        SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
+                        SDL_FPoint{0, 0},
+                    },
+                };
+                SDL_RenderGeometry(renderer, nullptr, verts.data(), verts.size(), nullptr, 0);
+
+                SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
+                SDL_RenderLine(renderer, gridScreen[0, 0], gridScreen[1, 0], gridScreen[0, 1], gridScreen[1, 1]);
+                SDL_RenderLine(renderer, gridScreen[0, 1], gridScreen[1, 1], gridScreen[0, 2], gridScreen[1, 2]);
+                SDL_RenderLine(renderer, gridScreen[0, 1], gridScreen[1, 1], gridScreen[0, 3], gridScreen[1, 3]);
+                SDL_RenderLine(renderer, gridScreen[0, 2], gridScreen[1, 2], gridScreen[0, 3], gridScreen[1, 3]);
+                SDL_RenderLine(renderer, gridScreen[0, 3], gridScreen[1, 3], gridScreen[0, 0], gridScreen[1, 0]);
         }
 
         return *this;
@@ -259,12 +288,6 @@ void World::getVisableEntities(const Player* player, std::unordered_set<int>* id
 
 void World::getNextVisableEntity(const Player* player, std::unordered_set<int>* idx, int i, int j) {
 
-        // Check that index exists in our world. Otherwise return.
-        int vectorIdx = i * this->nCols + j;
-        if (i >= this->nRows || j >= this->nCols || vectorIdx >= this->level.size()) {
-                return;
-        }
-
         // Check that index doesn't exceed player view distance (Euclidean)
         int x = player->location[0];
         int y = player->location[1];
@@ -275,14 +298,13 @@ void World::getNextVisableEntity(const Player* player, std::unordered_set<int>* 
                 return;
         }
 
-        // Add entity to list if not the player and not empty.
-        bool isEmpty = (this->level[vectorIdx] == EntityType::EMPTY);
-        bool isPlayer = (this->level[vectorIdx] == EntityType::PLAYER);
-        if (!isPlayer && !isEmpty) {
-                idx->insert(vectorIdx);
+        // Check that index exists in our world. Otherwise return.
+        int vectorIdx = i * this->nCols + j;
+        if (i >= this->nRows || j >= this->nCols || vectorIdx >= this->level.size()) {
+                return;
         }
 
-        // Only need to look for entities in the forward direction of the player
+        // Start search outward for furthest blocks.
         switch (player->direction) {
         case Direction::NORTH:
                 this->getNextVisableEntity(player, idx, i - 1, j + 1);
@@ -306,6 +328,12 @@ void World::getNextVisableEntity(const Player* player, std::unordered_set<int>* 
                 break;
         }
 
+        // Add entity to list if not the player and not empty.
+        bool isEmpty = (this->level[vectorIdx] == EntityType::EMPTY);
+        bool isPlayer = (this->level[vectorIdx] == EntityType::PLAYER);
+        if (!isPlayer && !isEmpty) {
+                idx->insert(vectorIdx);
+        }
         return;
 }
 
