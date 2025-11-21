@@ -37,6 +37,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
 
         state->game = new Game;
         state->game->setResourcePath(argv[0]);
+        state->game->loadTextures(state->renderer, "textures");
         state->game->loadWorld("world1.txt");
         state->game->loadPlayer(0);
 

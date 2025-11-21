@@ -8,8 +8,11 @@
 #include <unordered_set>
 #include <vector>
 
-template <typename T> using Matrix4x4 = Eigen::Matrix<T, 4, 4>;
+template <typename T> using Matrix2x6 = Eigen::Matrix<T, 2, 6>;
 template <typename T> using Matrix3x4 = Eigen::Matrix<T, 3, 4>;
+template <typename T> using Matrix3x6 = Eigen::Matrix<T, 3, 6>;
+template <typename T> using Matrix4x4 = Eigen::Matrix<T, 4, 4>;
+template <typename T> using Matrix4x6 = Eigen::Matrix<T, 4, 6>;
 template <typename T> using Vector2 = Eigen::Vector<T, 2>;
 template <typename T> using Vector4 = Eigen::Vector<T, 4>;
 template <typename T> using RowVector4 = Eigen::RowVector<T, 4>;
@@ -24,8 +27,7 @@ public:
 
 public:
         Vector2<int> findPlayerSpawn();
-        World& drawPlayerPOV(SDL_Renderer* renderer, const Player* player);
-        World& drawEntityInPlayerPOV(SDL_Renderer* renderer, const Player* player);
+        World& drawPlayerPOV(SDL_Renderer* renderer, const Player* player, SDL_Texture** textures);
         operator std::string() const;
 
 private:
@@ -34,6 +36,8 @@ private:
         Matrix4x4<float> buildWall(Direction direction);
         Matrix4x4<float> buildFloor();
         Matrix4x4<float> buildCeil();
+
+        World& draw(SDL_Renderer* renderer, const Player* player, Matrix4x4<float> square, SDL_Texture* texture);
 
         uset<int> getVisableEntities(const Player* player);
         uset<int> filterVisableEntities(uset<int>* idx, EntityType etype);

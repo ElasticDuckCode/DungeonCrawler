@@ -67,15 +67,7 @@ Vector2<int> World::findPlayerSpawn() {
         return location;
 }
 
-World& World::drawPlayerPOV(SDL_Renderer* renderer, const Player* player) {
-
-        // Screen-space projection matrix
-        Matrix3x4<float> P = this->buildCameraMatrix(player->fov);
-
-        // get aspect ratio of screen
-        int width, height;
-        SDL_GetWindowSizeInPixels(SDL_GetRenderWindow(renderer), &width, &height);
-        float aspect = float(width) / height;
+World& World::drawPlayerPOV(SDL_Renderer* renderer, const Player* player, SDL_Texture** textures) {
 
         // Obtain list of all entities which are visable.
         uset<int> visableEntityIdx = this->getVisableEntities(player);
@@ -90,79 +82,143 @@ World& World::drawPlayerPOV(SDL_Renderer* renderer, const Player* player) {
         std::vector<Matrix4x4<float>> ceilVector = this->getVisableCeilingVertices(player, &visableEntityIdx);
 
         // Combine
-        std::vector<Matrix4x4<float>> vertVector;
-        vertVector.insert(vertVector.begin(), wallVector.begin(), wallVector.end());
+        // std::vector<Matrix4x4<float>> vertVector;
+        // vertVector.insert(vertVector.begin(), wallVector.begin(), wallVector.end());
         // vertVector.insert(vertVector.begin(), floorVector.begin(), floorVector.end());
         // vertVector.insert(vertVector.begin(), ceilVector.begin(), ceilVector.end());
 
-        // Sort in terms of distance along focal z-axis
+        // Create sorting function
         RowVector4<float> v1{0, 0, 1, 0};
         Vector4<float> v2{0.25, 0.25, 0.25, 0.25};
         RowVector4<float> v3{1, 0, 0, 0};
-        std::sort(vertVector.begin(), vertVector.end(), [v1, v2](auto a, auto b) {
+        auto sort_func = [v1, v2](auto a, auto b) {
                 float za = v1 * a * v2;
                 float zb = v1 * b * v2;
                 return za > zb;
-        });
+        };
 
-        for (auto vertices : vertVector) {
-                // Project wall onto screen-space
-                Matrix3x4<float> gridScreen = P * vertices;
-                RowVector4<float> gridScale = gridScreen.row(gridScreen.rows() - 1);
-                gridScreen = (gridScreen.array().rowwise() / gridScale.array()).matrix();
+        // Sort in terms of distance along focal z-axis
+        std::sort(wallVector.begin(), wallVector.end(), sort_func);
+        std::sort(floorVector.begin(), floorVector.end(), sort_func);
+        std::sort(ceilVector.begin(), ceilVector.end(), sort_func);
 
-                gridScreen.row(0) = gridScreen.row(0) * (width) / 2;
-                gridScreen.row(1) = gridScreen.row(1) * (aspect * height) / 2;
-                gridScreen.row(0) = gridScreen.row(0).array() + width / 2;
-                gridScreen.row(1) = -gridScreen.row(1).array() + height / 2;
+        for (Matrix4x4<float> floor : floorVector) {
+                this->draw(renderer, player, floor, textures[0]);
+        }
 
-                // Draw
-                std::vector<SDL_Vertex> verts{
-                    {
-                        SDL_FPoint{gridScreen[0, 0], gridScreen[1, 0]},
-                        SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
-                        SDL_FPoint{0, 0},
-                    },
-                    {
-                        SDL_FPoint{gridScreen[0, 1], gridScreen[1, 1]},
-                        SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
-                        SDL_FPoint{0, 0},
-                    },
-                    {
-                        SDL_FPoint{gridScreen[0, 2], gridScreen[1, 2]},
-                        SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
-                        SDL_FPoint{0, 0},
-                    },
-                    {
-                        SDL_FPoint{gridScreen[0, 2], gridScreen[1, 2]},
-                        SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
-                        SDL_FPoint{0, 0},
-                    },
-                    {
-                        SDL_FPoint{gridScreen[0, 3], gridScreen[1, 3]},
-                        SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
-                        SDL_FPoint{0, 0},
-                    },
-                    {
-                        SDL_FPoint{gridScreen[0, 0], gridScreen[1, 0]},
-                        SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
-                        SDL_FPoint{0, 0},
-                    },
-                };
-                SDL_RenderGeometry(renderer, nullptr, verts.data(), verts.size(), nullptr, 0);
+        for (Matrix4x4<float> ceil : ceilVector) {
+                this->draw(renderer, player, ceil, textures[1]);
+        }
 
-                SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
-                SDL_RenderLine(renderer, gridScreen[0, 0], gridScreen[1, 0], gridScreen[0, 1], gridScreen[1, 1]);
-                SDL_RenderLine(renderer, gridScreen[0, 1], gridScreen[1, 1], gridScreen[0, 2], gridScreen[1, 2]);
-                SDL_RenderLine(renderer, gridScreen[0, 1], gridScreen[1, 1], gridScreen[0, 3], gridScreen[1, 3]);
-                SDL_RenderLine(renderer, gridScreen[0, 2], gridScreen[1, 2], gridScreen[0, 3], gridScreen[1, 3]);
-                SDL_RenderLine(renderer, gridScreen[0, 3], gridScreen[1, 3], gridScreen[0, 0], gridScreen[1, 0]);
+        for (Matrix4x4<float> wall : wallVector) {
+                this->draw(renderer, player, wall, textures[2]);
         }
 
         return *this;
 }
 
-World& World::drawEntityInPlayerPOV(SDL_Renderer* renderer, const Player* player) {
+World& World::draw(SDL_Renderer* renderer, const Player* player, Matrix4x4<float> square, SDL_Texture* texture) {
+        // Screen-space projection matrix
+        Matrix3x4<float> P = this->buildCameraMatrix(player->fov);
+
+        // get aspect ratio of screen
+        int width, height;
+        SDL_GetWindowSizeInPixels(SDL_GetRenderWindow(renderer), &width, &height);
+        float aspect = float(width) / height;
+
+        // Project wall onto screen-space
+        Matrix3x4<float> gridScreen = P * square;
+        RowVector4<float> gridScale = gridScreen.row(gridScreen.rows() - 1);
+        gridScreen = (gridScreen.array().rowwise() / gridScale.array()).matrix();
+
+        // Invert scale in last row for SDL_RenderGeometryRaw
+        gridScreen.row(2) = gridScale.cwiseInverse();
+
+        gridScreen.row(0) = gridScreen.row(0) * (width) / 2;
+        gridScreen.row(1) = gridScreen.row(1) * (aspect * height) / 2;
+        gridScreen.row(0) = gridScreen.row(0).array() + width / 2;
+        gridScreen.row(1) = -gridScreen.row(1).array() + height / 2;
+
+        // SDL_RenderGeometry needs 6 points
+        Matrix3x6<float> verts;
+        verts.col(0) = gridScreen.col(0);
+        verts.col(1) = gridScreen.col(1);
+        verts.col(2) = gridScreen.col(2);
+        verts.col(3) = gridScreen.col(2);
+        verts.col(4) = gridScreen.col(3);
+        verts.col(5) = gridScreen.col(0);
+        // Eigen::Map<Eigen::VectorXf> flatVerts(verts.data(), verts.size());
+
+        // Define colors in float
+        Matrix4x6<float> color = Eigen::ArrayXXf::Ones(4, 6);
+        // Eigen::Map<Eigen::VectorXf> flatColor(color.data(), color.size());
+        std::vector<SDL_FColor> colors{
+            SDL_FColor{1, 1, 1, 1}, SDL_FColor{1, 1, 1, 1}, SDL_FColor{1, 1, 1, 1},
+            SDL_FColor{1, 1, 1, 1}, SDL_FColor{1, 1, 1, 1}, SDL_FColor{1, 1, 1, 1},
+        };
+
+        // Define texture coordinates in float, divided by perspective scale
+        Matrix2x6<float> textureCoords;
+        textureCoords.col(0) = Eigen::Vector2f{0, 0};
+        textureCoords.col(1) = Eigen::Vector2f{0, 1};
+        textureCoords.col(2) = Eigen::Vector2f{1, 1};
+        textureCoords.col(3) = Eigen::Vector2f{1, 1};
+        textureCoords.col(4) = Eigen::Vector2f{1, 0};
+        textureCoords.col(5) = Eigen::Vector2f{0, 0};
+        // Eigen::Map<Eigen::VectorXf> flatCoords(textureCoords.data(), textureCoords.size());
+
+        SDL_RenderGeometryRaw(renderer, texture, verts.data(), sizeof(float) * 3, colors.data(), sizeof(SDL_FColor),
+                              textureCoords.data(), sizeof(float) * 2, verts.cols(), nullptr, 0, 0);
+
+        // // Draw
+        // std::vector<SDL_Vertex> verts{
+        //     {
+        //         // v0
+        //         SDL_FPoint{gridScreen[0, 0], gridScreen[1, 0]},
+        //         SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
+        //         SDL_FPoint{0, 0},
+        //     },
+        //     {
+        //         // v1
+        //         SDL_FPoint{gridScreen[0, 1], gridScreen[1, 1]},
+        //         SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
+        //         SDL_FPoint{0, 1},
+        //     },
+        //     {
+        //         // v2
+        //         SDL_FPoint{gridScreen[0, 2], gridScreen[1, 2]},
+        //         SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
+        //         SDL_FPoint{1, 1},
+        //     },
+        //     {
+        //         // v0
+        //         SDL_FPoint{gridScreen[0, 0], gridScreen[1, 0]},
+        //         SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
+        //         SDL_FPoint{0, 0},
+        //     },
+        //     {
+        //         // v2
+        //         SDL_FPoint{gridScreen[0, 2], gridScreen[1, 2]},
+        //         SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
+        //         SDL_FPoint{1, 1},
+        //     },
+        //     {
+        //         // v3
+        //         SDL_FPoint{gridScreen[0, 3], gridScreen[1, 3]},
+        //         SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
+        //         SDL_FPoint{1, 0},
+        //     },
+        // };
+
+        // SDL_RenderGeometry(renderer, nullptr, verts.data(), verts.size(), nullptr, 0);
+        // SDL_RenderGeometry(renderer, texture, verts.data(), verts.size(), nullptr, 0);
+
+        // SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
+        // SDL_RenderLine(renderer, gridScreen[0, 0], gridScreen[1, 0], gridScreen[0, 1], gridScreen[1, 1]);
+        // SDL_RenderLine(renderer, gridScreen[0, 1], gridScreen[1, 1], gridScreen[0, 2], gridScreen[1, 2]);
+        // SDL_RenderLine(renderer, gridScreen[0, 1], gridScreen[1, 1], gridScreen[0, 3], gridScreen[1, 3]);
+        // SDL_RenderLine(renderer, gridScreen[0, 2], gridScreen[1, 2], gridScreen[0, 3], gridScreen[1, 3]);
+        // SDL_RenderLine(renderer, gridScreen[0, 3], gridScreen[1, 3], gridScreen[0, 0], gridScreen[1, 0]);
         return *this;
 }
 
