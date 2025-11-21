@@ -92,8 +92,8 @@ World& World::drawPlayerPOV(SDL_Renderer* renderer, const Player* player) {
         // Combine
         std::vector<Matrix4x4<float>> vertVector;
         vertVector.insert(vertVector.begin(), wallVector.begin(), wallVector.end());
-        vertVector.insert(vertVector.begin(), floorVector.begin(), floorVector.end());
-        vertVector.insert(vertVector.begin(), ceilVector.begin(), ceilVector.end());
+        // vertVector.insert(vertVector.begin(), floorVector.begin(), floorVector.end());
+        // vertVector.insert(vertVector.begin(), ceilVector.begin(), ceilVector.end());
 
         // Sort in terms of distance along focal z-axis
         RowVector4<float> v1{0, 0, 1, 0};
@@ -133,10 +133,6 @@ World& World::drawPlayerPOV(SDL_Renderer* renderer, const Player* player) {
                         SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},
                         SDL_FPoint{0, 0},
                     },
-                };
-                SDL_RenderGeometry(renderer, nullptr, verts.data(), verts.size(), nullptr, 0);
-
-                verts = {
                     {
                         SDL_FPoint{gridScreen[0, 2], gridScreen[1, 2]},
                         SDL_FColor{0.75f, 0.75f, 0.75f, 1.0f},

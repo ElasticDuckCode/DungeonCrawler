@@ -37,6 +37,11 @@ Game& Game::loadPlayer(int number) {
         return *this;
 }
 
+Game& Game::loadTextures(const char* rfname) {
+        std::filesystem::path fname = this->dataPath / rfname;
+        return *this;
+}
+
 Game& Game::RenderDrawWorld(SDL_Renderer* renderer) {
         // debugging info
         std::println("\033[2J\033[1;1H {}", std::string(*this));

@@ -14,6 +14,7 @@ public:
         Game& setResourcePath(const char* path);
         Game& loadWorld(const char* rfname);
         Game& loadPlayer(int number);
+        Game& loadTextures(const char* rfname);
         Game& RenderDrawWorld(SDL_Renderer* renderer);
 
         operator std::string() const;
@@ -22,4 +23,6 @@ private:
         World world;
         Player player;
         std::filesystem::path dataPath;
+
+        SDL_Texture* wallTexture;
 };
