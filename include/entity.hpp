@@ -2,7 +2,7 @@
 
 #include <string>
 
-enum class EntityType : int { EMPTY = 0, WALL = 1, PLAYER = 2 };
+enum class EntityType : int { EMPTY = 0, PLAYER = 1, FLOOR = 2, WALL = 4 };
 
 class Entity {
 public:

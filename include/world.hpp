@@ -26,6 +26,7 @@ private:
         Eigen::Matrix<float, 4, 4> buildWall(Direction direction);
         void getVisableEntities(const Player* player, std::unordered_set<int>* idx);
         void getNextVisableEntity(const Player* player, std::unordered_set<int>* idx, int i, int j);
+        std::unordered_set<int> filterVisableEntities(std::unordered_set<int>* idx, EntityType etype);
 
         std::vector<Entity> level;
         int nRows;

@@ -117,7 +117,11 @@ World& World::drawPlayerPOV(SDL_Renderer* renderer, const Player* player) {
 
         std::println("There are {} visable entities.", visableEntityIdx.size());
 
-        for (int idx : visableEntityIdx) {
+        std::unordered_set<int> visableWallIdx = this->filterVisableEntities(&visableEntityIdx, EntityType::WALL);
+
+        std::println("There are {} visable wall entities.", visableWallIdx.size());
+
+        for (int idx : visableWallIdx) {
                 int i = idx / this->nCols;
                 int j = idx % this->nCols;
 
@@ -181,8 +185,8 @@ World& World::drawPlayerPOV(SDL_Renderer* renderer, const Player* player) {
                 Eigen::RowVector<float, 4> gridScale = gridScreen.row(gridScreen.rows() - 1);
                 gridScreen = (gridScreen.array().rowwise() / gridScale.array()).matrix();
 
-                gridScreen.row(0) = gridScreen.row(0) * (width / aspect) / 2;
-                gridScreen.row(1) = gridScreen.row(1) * (1 * height) / 2;
+                gridScreen.row(0) = gridScreen.row(0) * (width) / 2;
+                gridScreen.row(1) = gridScreen.row(1) * (aspect * height) / 2;
                 gridScreen.row(0) = gridScreen.row(0).array() + width / 2;
                 gridScreen.row(1) = -gridScreen.row(1).array() + height / 2;
 
@@ -288,13 +292,15 @@ void World::getVisableEntities(const Player* player, std::unordered_set<int>* id
 
 void World::getNextVisableEntity(const Player* player, std::unordered_set<int>* idx, int i, int j) {
 
-        // Check that index doesn't exceed player view distance (Euclidean)
+        // Check that index doesn't exceed player view distance
         int x = player->location[0];
         int y = player->location[1];
         int a = (x - i);
         int b = (y - j);
         int c = player->viewDistance;
-        if ((a * a + b * b) > (c * c)) {
+        // if ((a * a + b * b) > (c * c)) { //  (L2) circle
+        // if ((std::abs(a) + std::abs(b)) > c) { // (L1) diamond
+        if (std::max(a, b) > c) { // (LInf) square, looks best in our world since no fog
                 return;
         }
 
@@ -335,6 +341,16 @@ void World::getNextVisableEntity(const Player* player, std::unordered_set<int>* 
                 idx->insert(vectorIdx);
         }
         return;
+}
+
+std::unordered_set<int> World::filterVisableEntities(std::unordered_set<int>* idx, EntityType etype) {
+        std::unordered_set<int> idxOut{};
+        for (int i : *idx) {
+                if (this->level[i] == etype) {
+                        idxOut.insert(i);
+                }
+        }
+        return idxOut;
 }
 
 World::operator std::string() const {
