@@ -118,6 +118,7 @@ World& World::drawPlayerPOV(SDL_Renderer* renderer, const Player* player, SDL_Te
 }
 
 World& World::draw(SDL_Renderer* renderer, const Player* player, Matrix4x4<float> square, SDL_Texture* texture) {
+
         // Screen-space projection matrix
         Matrix3x4<float> P = this->buildCameraMatrix(player->fov);
 
@@ -131,13 +132,14 @@ World& World::draw(SDL_Renderer* renderer, const Player* player, Matrix4x4<float
         RowVector4<float> gridScale = gridScreen.row(gridScreen.rows() - 1);
         gridScreen = (gridScreen.array().rowwise() / gridScale.array()).matrix();
 
-        // Invert scale in last row for SDL_RenderGeometryRaw
-        gridScreen.row(2) = gridScale.cwiseInverse();
-
         gridScreen.row(0) = gridScreen.row(0) * (width) / 2;
         gridScreen.row(1) = gridScreen.row(1) * (aspect * height) / 2;
         gridScreen.row(0) = gridScreen.row(0).array() + width / 2;
         gridScreen.row(1) = -gridScreen.row(1).array() + height / 2;
+
+        // Invert scale in last row for SDL_RenderGeometryRaw
+        gridScale = gridScale.cwiseInverse(); // 1/w
+        gridScreen.row(2) = gridScale;
 
         // SDL_RenderGeometry needs 6 points
         Matrix3x6<float> verts;
@@ -147,11 +149,8 @@ World& World::draw(SDL_Renderer* renderer, const Player* player, Matrix4x4<float
         verts.col(3) = gridScreen.col(2);
         verts.col(4) = gridScreen.col(3);
         verts.col(5) = gridScreen.col(0);
-        // Eigen::Map<Eigen::VectorXf> flatVerts(verts.data(), verts.size());
 
         // Define colors in float
-        Matrix4x6<float> color = Eigen::ArrayXXf::Ones(4, 6);
-        // Eigen::Map<Eigen::VectorXf> flatColor(color.data(), color.size());
         std::vector<SDL_FColor> colors{
             SDL_FColor{1, 1, 1, 1}, SDL_FColor{1, 1, 1, 1}, SDL_FColor{1, 1, 1, 1},
             SDL_FColor{1, 1, 1, 1}, SDL_FColor{1, 1, 1, 1}, SDL_FColor{1, 1, 1, 1},
@@ -159,13 +158,12 @@ World& World::draw(SDL_Renderer* renderer, const Player* player, Matrix4x4<float
 
         // Define texture coordinates in float, divided by perspective scale
         Matrix2x6<float> textureCoords;
-        textureCoords.col(0) = Eigen::Vector2f{0, 0};
-        textureCoords.col(1) = Eigen::Vector2f{0, 1};
-        textureCoords.col(2) = Eigen::Vector2f{1, 1};
-        textureCoords.col(3) = Eigen::Vector2f{1, 1};
-        textureCoords.col(4) = Eigen::Vector2f{1, 0};
-        textureCoords.col(5) = Eigen::Vector2f{0, 0};
-        // Eigen::Map<Eigen::VectorXf> flatCoords(textureCoords.data(), textureCoords.size());
+        textureCoords.col(0) = Eigen::Vector2f{0, 0} / gridScale[0];
+        textureCoords.col(1) = Eigen::Vector2f{0, 1} / gridScale[1];
+        textureCoords.col(2) = Eigen::Vector2f{1, 1} / gridScale[2];
+        textureCoords.col(3) = Eigen::Vector2f{1, 1} / gridScale[2];
+        textureCoords.col(4) = Eigen::Vector2f{1, 0} / gridScale[3];
+        textureCoords.col(5) = Eigen::Vector2f{0, 0} / gridScale[0];
 
         SDL_RenderGeometryRaw(renderer, texture, verts.data(), sizeof(float) * 3, colors.data(), sizeof(SDL_FColor),
                               textureCoords.data(), sizeof(float) * 2, verts.cols(), nullptr, 0, 0);
@@ -323,7 +321,7 @@ void World::getNextVisableEntity(const Player* player, uset<int>* idx, int i, in
         int c = player->viewDistance;
         // if ((a * a + b * b) > (c * c)) { //  (L2) circle
         // if ((std::abs(a) + std::abs(b)) > c) { // (L1) diamond
-        if (std::max(a, b) > c) { // (LInf) square, looks best in our world since no fog
+        if (std::max(a, b) >= c) { // (LInf) square, looks best in our world since no fog
                 return;
         }
 
