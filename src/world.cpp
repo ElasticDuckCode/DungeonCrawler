@@ -44,7 +44,7 @@ World::~World() {
 }
 
 Vector2<int> World::findPlayerSpawn() {
-        Vector2<int> location = {0, 0};
+        Vector2<int> location = { 0, 0 };
 
         int i, j = 0;
         bool isFound = false;
@@ -88,9 +88,9 @@ World& World::drawPlayerPOV(SDL_Renderer* renderer, const Player* player, SDL_Te
         // vertVector.insert(vertVector.begin(), ceilVector.begin(), ceilVector.end());
 
         // Create sorting function
-        RowVector4<float> v1{0, 0, 1, 0};
-        Vector4<float> v2{0.25, 0.25, 0.25, 0.25};
-        RowVector4<float> v3{1, 0, 0, 0};
+        RowVector4<float> v1{ 0, 0, 1, 0 };
+        Vector4<float> v2{ 0.25, 0.25, 0.25, 0.25 };
+        RowVector4<float> v3{ 1, 0, 0, 0 };
         auto sort_func = [v1, v2](auto a, auto b) {
                 float za = v1 * a * v2;
                 float zb = v1 * b * v2;
@@ -152,18 +152,18 @@ World& World::draw(SDL_Renderer* renderer, const Player* player, Matrix4x4<float
 
         // Define colors in float
         std::vector<SDL_FColor> colors{
-            SDL_FColor{1, 1, 1, 1}, SDL_FColor{1, 1, 1, 1}, SDL_FColor{1, 1, 1, 1},
-            SDL_FColor{1, 1, 1, 1}, SDL_FColor{1, 1, 1, 1}, SDL_FColor{1, 1, 1, 1},
+                SDL_FColor{ 1, 1, 1, 1 }, SDL_FColor{ 1, 1, 1, 1 }, SDL_FColor{ 1, 1, 1, 1 },
+                SDL_FColor{ 1, 1, 1, 1 }, SDL_FColor{ 1, 1, 1, 1 }, SDL_FColor{ 1, 1, 1, 1 },
         };
 
         // Define texture coordinates in float, divided by perspective scale
         Matrix2x6<float> textureCoords;
-        textureCoords.col(0) = Eigen::Vector2f{0, 0} / gridScale[0];
-        textureCoords.col(1) = Eigen::Vector2f{0, 1} / gridScale[1];
-        textureCoords.col(2) = Eigen::Vector2f{1, 1} / gridScale[2];
-        textureCoords.col(3) = Eigen::Vector2f{1, 1} / gridScale[2];
-        textureCoords.col(4) = Eigen::Vector2f{1, 0} / gridScale[3];
-        textureCoords.col(5) = Eigen::Vector2f{0, 0} / gridScale[0];
+        textureCoords.col(0) = Eigen::Vector2f{ 0, 0 } / gridScale[0];
+        textureCoords.col(1) = Eigen::Vector2f{ 0, 1 } / gridScale[1];
+        textureCoords.col(2) = Eigen::Vector2f{ 1, 1 } / gridScale[2];
+        textureCoords.col(3) = Eigen::Vector2f{ 1, 1 } / gridScale[2];
+        textureCoords.col(4) = Eigen::Vector2f{ 1, 0 } / gridScale[3];
+        textureCoords.col(5) = Eigen::Vector2f{ 0, 0 } / gridScale[0];
 
         SDL_RenderGeometryRaw(renderer, texture, verts.data(), sizeof(float) * 3, colors.data(), sizeof(SDL_FColor),
                               textureCoords.data(), sizeof(float) * 2, verts.cols(), nullptr, 0, 0);
@@ -242,10 +242,10 @@ Matrix4x4<float> World::buildRotationMatrix(const Player* player) {
         // left-handed due to z-direction being forward in this game.
         // Therefore must negate angle.
         return Matrix4x4<float>{
-            {std::cos(-angle), 0, std::sin(-angle), 0},
-            {0, 1, 0, 0},
-            {-std::sin(-angle), 0, std::cos(-angle), 0},
-            {0, 0, 0, 1},
+                { std::cos(-angle), 0, std::sin(-angle), 0 },
+                { 0, 1, 0, 0 },
+                { -std::sin(-angle), 0, std::cos(-angle), 0 },
+                { 0, 0, 0, 1 },
         };
 }
 
@@ -253,9 +253,9 @@ Matrix3x4<float> World::buildCameraMatrix(float fov_d) {
         float fov = std::numbers::pi * fov_d / 180; // convert to radians
         float f = 1 / std::tan(fov / 2);
         return Matrix3x4<float>{
-            {f, 0, 0, 0},
-            {0, f, 0, 0},
-            {0, 0, 1, 0},
+                { f, 0, 0, 0 },
+                { 0, f, 0, 0 },
+                { 0, 0, 1, 0 },
         };
 }
 
@@ -384,9 +384,9 @@ std::vector<Matrix4x4<float>> World::getVisableFloorVertices(const Player* playe
 
         // initalize matrices for wall loop
         Matrix4x4<float> gridFloor = {};
-        RowVector4<float> v1{0, 0, 1, 0};
-        Vector4<float> v2{0.25, 0.25, 0.25, 0.25};
-        RowVector4<float> v3{1, 0, 0, 0};
+        RowVector4<float> v1{ 0, 0, 1, 0 };
+        Vector4<float> v2{ 0.25, 0.25, 0.25, 0.25 };
+        RowVector4<float> v3{ 1, 0, 0, 0 };
 
         // determine player location in world-space, centered on 1x1x1 grid tile
         Vector4<float> playerPosition;
@@ -441,9 +441,9 @@ std::vector<Matrix4x4<float>> World::getVisableCeilingVertices(const Player* pla
 
         // initalize matrices for wall loop
         Matrix4x4<float> gridCeil = {};
-        RowVector4<float> v1{0, 0, 1, 0};
-        Vector4<float> v2{0.25, 0.25, 0.25, 0.25};
-        RowVector4<float> v3{1, 0, 0, 0};
+        RowVector4<float> v1{ 0, 0, 1, 0 };
+        Vector4<float> v2{ 0.25, 0.25, 0.25, 0.25 };
+        RowVector4<float> v3{ 1, 0, 0, 0 };
 
         // determine player location in world-space, centered on 1x1x1 grid tile
         Vector4<float> playerPosition;
@@ -498,9 +498,9 @@ std::vector<Matrix4x4<float>> World::getVisableWallVertices(const Player* player
 
         // initalize matrices for wall loop
         Matrix4x4<float> gridWalls = {};
-        RowVector4<float> v1{0, 0, 1, 0};
-        Vector4<float> v2{0.25, 0.25, 0.25, 0.25};
-        RowVector4<float> v3{1, 0, 0, 0};
+        RowVector4<float> v1{ 0, 0, 1, 0 };
+        Vector4<float> v2{ 0.25, 0.25, 0.25, 0.25 };
+        RowVector4<float> v3{ 1, 0, 0, 0 };
 
         // determine player location in world-space, centered on 1x1x1 grid tile
         Vector4<float> playerPosition;
